@@ -1,37 +1,39 @@
-#!/bin/usr/python
-
+#!C:\Python33\python.exe
+  
 import binascii
-import base64
-
-textFile = raw_input('Enter embeded file name: ')
-imgFile = raw_input('Enter host file name: ')
-secretSig = binascii.a2b_hex('FFFF0000FFFF0000FFFF')
-
-fileOut = raw_input('Enter output file name: ')
-
-with open(textFile, 'rb') as txt:
-	content = txt.read()
-	content = base64.b64encode(content)
-	content = binascii.hexlify(content).upper()
-	content = binascii.a2b_hex(content)
-	#print content
-
-#print 'Secret signature',secretSig
-	
-with open(imgFile, 'rb') as img:
-	imageData = img.read()
-	imageData = binascii.hexlify(imageData).upper()
-	imageData = binascii.a2b_hex(imageData)
-	#print imageData
-
+from Crypto.Cipher import AES
+from Crypto import Random
+import hashlib
+  
+secretFile = input('Enter secret file name: ')
+carrierFile = input('Enter carrier file name: ')
+fileOut = input('Enter output file name: ')
+ 
+password = input('Enter the key: ').encode('utf-8')
+key = hashlib.sha256(password).digest()
+ 
+IV = Random.new().read(AES.block_size)
+secretSig = IV
+print('IV: ', binascii.hexlify(IV).decode('utf-8'))
+ 
+mode = AES.MODE_CBC
+encryptor = AES.new(key, mode, IV=IV)
+  
+with open(secretFile, 'rb') as s: #secretfile
+    secretData = s.read()
+     
+    if len(secretData) % 16 != 0: #pad with spaces if too small
+        secretData += bytes(([0x20]) * (16 - len(secretData) % 16))
+         
+    secretData = encryptor.encrypt(secretData)    
+     
+with open(carrierFile, 'rb') as c: #carrier
+    carrierData = c.read()
+  
 target = open(fileOut, 'wb')
-target.write(imageData)
+target.write(carrierData)
 target.write(secretSig)
-target.write(content)
+target.write(secretData)
 target.close()
-
-##content = binascii.unhexlify(content)
-##content = base64.b64decode(content)
-##print ('content decoded: '),content
-
-pause = raw_input('File done. Press enter.')
+ 
+pause = input('File done. Press enter.')
